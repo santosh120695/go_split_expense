@@ -1,10 +1,9 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"splitwise/models"
-
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,6 +20,51 @@ func GroupIndex(c *gin.Context, db *gorm.DB) {
 	})
 }
 
+type GroupDetail struct {
+	UserName string  `json:"user_name"`
+	Email    string  `json:"email"`
+	UserId   int64   `json:"user_id"`
+	Pay      float64 `json:"pay"`
+	Receive  float64 `json:"receive"`
+}
+
+type GroupShowParam struct {
+	ID int64 `uri:"id"`
+}
+
+func GroupShow(c *gin.Context, db *gorm.DB) {
+
+	var group models.Group
+	var user_groups []models.UserGroup
+	var group_details []GroupDetail
+	var params GroupShowParam
+
+	if err := c.ShouldBindUri(&params); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+
+	db.Preload(clause.Associations).Where("id = ? ", params.ID).Find(&group)
+	db.Preload(clause.Associations).Where("group_id = ?", group.Id).Find(&user_groups)
+
+	for _, user_group := range user_groups {
+		fmt.Println(user_group.AmountOwe)
+		fmt.Println(user_group.AmountPaid)
+		group_details = append(group_details, GroupDetail{
+			UserName: user_group.User.UserName,
+			Email:    user_group.User.Email,
+			UserId:   user_group.UserId,
+			Pay:      user_group.AmountOwe - user_group.AmountPaid,
+			Receive:  user_group.AmountPaid - user_group.AmountOwe,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"name":  group.Name,
+		"users": group_details,
+	})
+}
+
 type CreateGroupParams struct {
 	Name string `json:"name"`
 }
@@ -33,8 +77,6 @@ func GroupCreate(c *gin.Context, db *gorm.DB) {
 			"error": err.Error(),
 		})
 	}
-
-	fmt.Println(params.Name)
 
 	group := models.Group{Name: params.Name}
 

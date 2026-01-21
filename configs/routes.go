@@ -22,11 +22,13 @@ var Routes = []Route{
 	{RequestType: "POST", Handler: handlers.SignIn, RequestGroup: "users", Path: "/sign_in", Authenticate: false},
 	{RequestType: "GET", Handler: handlers.UserSearch, RequestGroup: "users", Path: "/search", Authenticate: true},
 	{RequestType: "GET", Handler: handlers.GroupIndex, RequestGroup: "groups", Path: "", Authenticate: true},
+	{RequestType: "GET", Handler: handlers.GroupShow, RequestGroup: "groups", Path: "/:id", Authenticate: true},
 	{RequestType: "POST", Handler: handlers.GroupCreate, RequestGroup: "groups", Path: "", Authenticate: true},
 	{RequestType: "PUT", Handler: handlers.GroupUpdate, RequestGroup: "groups", Path: "/:id", Authenticate: true},
 	{RequestType: "POST", Handler: handlers.AddUser, RequestGroup: "groups", Path: "/:id/add_users", Authenticate: true},
 	{RequestType: "GET", Handler: handlers.TransactionIndex, RequestGroup: "transactions", Path: "", Authenticate: true},
 	{RequestType: "POST", Handler: handlers.TransactionCreate, RequestGroup: "transactions", Path: "", Authenticate: true},
+	{RequestType: "GET", Handler: handlers.CalculateSplit, RequestGroup: "transactions", Path: "/:group_id", Authenticate: true},
 }
 
 func InitRoutes(db *gorm.DB) *gin.Engine {

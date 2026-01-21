@@ -10,4 +10,5 @@ type UserGroup struct {
 	GroupId    int64
 	AmountOwe  float64
 	AmountPaid float64
+	User       User
 }
