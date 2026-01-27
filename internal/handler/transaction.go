@@ -1,8 +1,8 @@
-package handlers
+package handler
 
 import (
 	"net/http"
-	"splitwise/models"
+	"splitwise/internal/model"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -20,7 +20,7 @@ func TransactionIndex(c *gin.Context, db *gorm.DB) {
 		})
 	}
 
-	var transactions []models.Transaction
+	var transactions []model.Transaction
 
 	query := db
 	if params.GroupId != 0 {
@@ -65,7 +65,7 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 	var usersWhoPaid []AmountUser
 	var usersWhoOwe []AmountUser
 	var usersAmount []AmountUser
-	var group models.Group
+	var group model.Group
 	var params splitParams
 
 	if err := c.ShouldBindUri(&params); err != nil {
@@ -124,9 +124,9 @@ func TransactionCreate(c *gin.Context, db *gorm.DB) {
 		})
 	}
 
-	var users []models.User
+	var users []model.User
 	db.Find(&users, params.UserIds)
-	transaction := models.Transaction{
+	transaction := model.Transaction{
 		Amount:   params.Amount,
 		GroupId:  params.GroupID,
 		PaidById: params.PaidById,
@@ -135,11 +135,11 @@ func TransactionCreate(c *gin.Context, db *gorm.DB) {
 
 	db.Save(&transaction)
 	share := transaction.Amount / float64(len(params.UserIds))
-	var user_transactions []models.UserTransaction
+	var user_transactions []model.UserTransaction
 	for _, userId := range params.UserIds {
 
 		user_transactions = append(user_transactions,
-			models.UserTransaction{
+			model.UserTransaction{
 				UserId:        userId,
 				TransactionId: int64(transaction.ID),
 				Share:         share,

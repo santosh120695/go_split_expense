@@ -1,13 +1,15 @@
-package handlers
+package handler
 
 import (
+	"net/http"
+	"os"
+	"splitwise/internal/model"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"net/http"
-	"splitwise/models"
-	"time"
 )
 
 type SignUpParams struct {
@@ -32,7 +34,7 @@ func createToken(email string) (string, error) {
 		"email": email,
 		"exp":   time.Now().Add(time.Hour * 24).Unix(),
 	})
-	var secretKey = []byte("some-key")
+	var secretKey = []byte(os.Getenv("SECRET_KEY"))
 	tokenString, err := token.SignedString(secretKey)
 	if err != nil {
 		return "", err
@@ -53,7 +55,7 @@ func SignUp(c *gin.Context, db *gorm.DB) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	user := models.User{UserName: signup_param.UserName, Email: signup_param.Email, EncryptedPassword: encrypted_password}
+	user := model.User{UserName: signup_param.UserName, Email: signup_param.Email, EncryptedPassword: encrypted_password}
 
 	result := db.Create(&user)
 	if result.Error != nil {
@@ -77,7 +79,7 @@ func SignIn(c *gin.Context, db *gorm.DB) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error})
 	}
 
-	var user models.User
+	var user model.User
 	db.Where("email = ?", signin_params.Email).First(&user)
 
 	if user.Email == "" {

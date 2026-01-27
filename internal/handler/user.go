@@ -1,8 +1,8 @@
-package handlers
+package handler
 
 import (
 	"net/http"
-	"splitwise/models"
+	"splitwise/internal/model"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -30,7 +30,7 @@ func UserSearch(c *gin.Context, db *gorm.DB) {
 	var users []UserSearchResponse
 
 	// db.Select("email", "user_name", "id").Where("user_name LIKE ?", "%"+search_params.SearchTerm+"%").Scan(&users)
-	db.Model(&models.User{}).Select("email", "user_name", "id").Where("user_name LIKE ?", "%"+search_params.SearchTerm+"%").Scan(&users).Select("user_name", "email")
+	db.Model(&model.User{}).Select("email", "user_name", "id").Where("user_name LIKE ?", "%"+search_params.SearchTerm+"%").Scan(&users).Select("user_name", "email")
 
 	c.JSON(http.StatusOK, gin.H{
 		"data":  users,
