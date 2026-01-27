@@ -46,7 +46,7 @@ func GroupShow(c *gin.Context, db *gorm.DB) {
 	}
 
 	db.Preload(clause.Associations).Where("id = ? ", params.ID).Find(&group)
-	db.Preload(clause.Associations).Where("group_id = ?", group.Id).Find(&user_groups)
+	db.Preload(clause.Associations).Where("group_id = ?", group.ID).Find(&user_groups)
 
 	for _, user_group := range user_groups {
 		fmt.Println(user_group.AmountOwe)

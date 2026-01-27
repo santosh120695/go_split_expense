@@ -80,7 +80,7 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 			FROM user_transactions
 			JOIN transactions ON transactions.id = user_transactions.transaction_id
 			WHERE transactions.group_id = ?
-			GROUP BY user_id ORDER BY amount DESC`, group.Id).Scan(&usersAmount)
+			GROUP BY user_id ORDER BY amount DESC`, group.ID).Scan(&usersAmount)
 
 	index := 0
 	for usersAmount[index].Amount > 0 {
