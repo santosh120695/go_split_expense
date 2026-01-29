@@ -30,8 +30,7 @@ var Routes = []Route{
 	{RequestType: "GET", Handler: handler.CalculateSplit, RequestGroup: "transactions", Path: "/:group_id", Authenticate: true},
 }
 
-func InitRoutes(db *gorm.DB) *gin.Engine {
-	r := gin.Default()
+func InitRoutes(db *gorm.DB, r *gin.Engine) {
 	v1 := r.Group("/v1")
 	for _, route := range Routes {
 		group := v1.Group(route.RequestGroup)
@@ -42,5 +41,4 @@ func InitRoutes(db *gorm.DB) *gin.Engine {
 			route.Handler(c, db)
 		})
 	}
-	return r
 }

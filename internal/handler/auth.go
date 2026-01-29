@@ -2,12 +2,8 @@ package handler
 
 import (
 	"net/http"
-<<<<<<< HEAD:internal/handler/auth.go
 	"os"
 	"splitwise/internal/model"
-=======
-	"splitwise/models"
->>>>>>> 1e942ea (cors changes):handlers/auth_handlers.go
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -67,11 +63,7 @@ func SignUp(c *gin.Context, db *gorm.DB) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-<<<<<<< HEAD:internal/handler/auth.go
-	user := model.User{UserName: signup_param.UserName, Email: signup_param.Email, EncryptedPassword: encrypted_password}
-=======
-	user := models.User{UserName: signup_param.UserName, Email: signup_param.Email, EncryptedPassword: encrypted_password, ContactNo: signup_param.ContactNo}
->>>>>>> 1e942ea (cors changes):handlers/auth_handlers.go
+	user := model.User{UserName: signup_param.UserName, Email: signup_param.Email, EncryptedPassword: encrypted_password, ContactNo: signup_param.ContactNo}
 
 	result := db.Create(&user)
 	if result.Error != nil {
