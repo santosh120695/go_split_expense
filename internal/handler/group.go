@@ -1,9 +1,9 @@
-package handlers
+package handler
 
 import (
 	"fmt"
 	"net/http"
-	"splitwise/models"
+	"splitwise/internal/model"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -11,7 +11,7 @@ import (
 )
 
 func GroupIndex(c *gin.Context, db *gorm.DB) {
-	var groups models.Group
+	var groups model.Group
 
 	db.Preload(clause.Associations).Find(&groups)
 
@@ -34,8 +34,8 @@ type GroupShowParam struct {
 
 func GroupShow(c *gin.Context, db *gorm.DB) {
 
-	var group models.Group
-	var user_groups []models.UserGroup
+	var group model.Group
+	var user_groups []model.UserGroup
 	var group_details []GroupDetail
 	var params GroupShowParam
 
@@ -46,7 +46,7 @@ func GroupShow(c *gin.Context, db *gorm.DB) {
 	}
 
 	db.Preload(clause.Associations).Where("id = ? ", params.ID).Find(&group)
-	db.Preload(clause.Associations).Where("group_id = ?", group.Id).Find(&user_groups)
+	db.Preload(clause.Associations).Where("group_id = ?", group.ID).Find(&user_groups)
 
 	for _, user_group := range user_groups {
 		fmt.Println(user_group.AmountOwe)
@@ -78,7 +78,7 @@ func GroupCreate(c *gin.Context, db *gorm.DB) {
 		})
 	}
 
-	group := models.Group{Name: params.Name}
+	group := model.Group{Name: params.Name}
 
 	db.Create(&group)
 
@@ -108,7 +108,7 @@ func GroupUpdate(c *gin.Context, db *gorm.DB) {
 		})
 	}
 
-	var group models.Group
+	var group model.Group
 
 	db.Where("id = ?", params.ID).First(&group)
 	group.Name = params.Name
@@ -145,9 +145,9 @@ func AddUser(c *gin.Context, db *gorm.DB) {
 		})
 	}
 
-	var users []models.User
+	var users []model.User
 
-	var group models.Group
+	var group model.Group
 
 	db.Where("id = ?", params.ID).First(&group)
 
