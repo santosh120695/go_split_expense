@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"splitwise/internal/config"
 	"splitwise/internal/router"
 
@@ -14,12 +15,12 @@ import (
 func main() {
 	fmt.Println("welcome to splitwise app")
 
-	err := godotenv.Load()
-
-	if err != nil {
-		//log.Fatal("Error loading .env file")
-		log.Fatal(err.Error())
-		return
+	if os.Getenv("ENV") != "production" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal(err.Error())
+			return
+		}
 	}
 
 	db := config.ConnectDB()
