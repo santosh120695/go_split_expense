@@ -5,12 +5,13 @@ import (
 	"os"
 	"splitwise/internal/model"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func ConnectDB() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(os.Getenv("DB_NAME")), &gorm.Config{})
+	db, err := openDB()
 	if err != nil {
 		fmt.Printf("error in connecting with db, %v\n", err.Error())
 	} else {
@@ -25,4 +26,15 @@ func ConnectDB() *gorm.DB {
 		}
 	}
 	return db
+}
+
+func openDB() (*gorm.DB, error) {
+	env := os.Getenv("ENV")
+
+	dbPath := os.Getenv("DB_NAME")
+	if env == "production" {
+		return gorm.Open(postgres.Open(dbPath), &gorm.Config{})
+	}
+
+	return gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 }
