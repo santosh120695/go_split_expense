@@ -30,9 +30,10 @@ func verifyPassword(password, hash string) bool {
 	return err == nil
 }
 
-func createToken(email string) (string, error) {
+func createToken(user model.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email": email,
+		"email": user.Email,
+		"id":    user.ID,
 		"exp":   time.Now().Add(time.Hour * 24).Unix(),
 	})
 	var secretKey = []byte(os.Getenv("SECRET_KEY"))
@@ -44,35 +45,38 @@ func createToken(email string) (string, error) {
 }
 
 func SignUp(c *gin.Context, db *gorm.DB) {
-	signup_param := SignUpParams{}
-
-	if err := c.ShouldBindJSON(&signup_param); err != nil {
+	signupParam := SignUpParams{}
+	if err := c.ShouldBindJSON(&signupParam); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	if signup_param.ConfirmPassword != signup_param.Password {
+	if signupParam.ConfirmPassword != signupParam.Password {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "confirm_password and password should be same.",
 		})
+		return
 	}
 
-	encrypted_password, err := hashPassword(signup_param.Password)
+	encryptedPassword, err := hashPassword(signupParam.Password)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	user := model.User{UserName: signup_param.UserName, Email: signup_param.Email, EncryptedPassword: encrypted_password, ContactNo: signup_param.ContactNo}
+	user := model.User{UserName: signupParam.UserName, Email: signupParam.Email, EncryptedPassword: encryptedPassword, ContactNo: signupParam.ContactNo}
 
 	result := db.Create(&user)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"email":     signup_param.Email,
-		"user_name": signup_param.UserName,
+	c.JSON(http.StatusCreated, gin.H{
+		"email":     signupParam.Email,
+		"user_name": signupParam.UserName,
 	})
 }
 
@@ -82,39 +86,41 @@ type SignParams struct {
 }
 
 func SignIn(c *gin.Context, db *gorm.DB) {
-	signin_params := SignParams{}
-	if err := c.ShouldBindJSON(&signin_params); err != nil {
+	signingParams := SignParams{}
+	if err := c.ShouldBindJSON(&signingParams); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error})
+		return
 	}
 
 	var user model.User
-	db.Where("email = ?", signin_params.Email).First(&user)
+	db.Where("email = ?", signingParams.Email).First(&user)
 
 	if user.Email == "" {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"error":   "user not found",
 		})
+		return
 	}
-
-	if verifyPassword(signin_params.Password, user.EncryptedPassword) {
-		token, err := createToken(user.Email)
+	if verifyPassword(signingParams.Password, user.EncryptedPassword) {
+		token, err := createToken(user)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
 				"error":   err.Error(),
 			})
+			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"token":   token,
 		})
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Invalid email or password!",
-		})
+		return
 	}
+	c.JSON(http.StatusUnauthorized, gin.H{
+		"success": false,
+		"message": "Invalid email or password!",
+	})
 }

@@ -10,13 +10,40 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type GroupIndexResponse struct {
+	Name         string       `json:"name"`
+	Icon         string       `json:"icon"`
+	Description  string       `json:"description"`
+	Members      []model.User `json:"members"`
+	TotalExpense float64      `json:"total_expense"`
+	Currency     string       `json:"currency"`
+	ID           uint         `json:"id"`
+}
+
 func GroupIndex(c *gin.Context, db *gorm.DB) {
-	var groups model.Group
-
-	db.Preload(clause.Associations).Find(&groups)
-
+	userId, _ := c.Get("current_user")
+	var user model.User
+	var response []GroupIndexResponse
+	db.Preload(clause.Associations).First(&user, userId.(float64))
+	db.Preload(clause.Associations).Find(&user.Groups)
+	for _, group := range user.Groups {
+		totalExpense := 0.0
+		for _, transaction := range group.Transactions {
+			totalExpense += transaction.Amount
+		}
+		response = append(response, GroupIndexResponse{
+			Name:         group.Name,
+			Icon:         group.Icon,
+			Description:  "",
+			Members:      group.Users,
+			TotalExpense: totalExpense,
+			Currency:     group.Currency,
+			ID:           group.ID,
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"data": groups,
+		"data":    response,
+		"success": true,
 	})
 }
 
@@ -35,8 +62,8 @@ type GroupShowParam struct {
 func GroupShow(c *gin.Context, db *gorm.DB) {
 
 	var group model.Group
-	var user_groups []model.UserGroup
-	var group_details []GroupDetail
+	var userGroups []model.UserGroup
+	var groupDetails []GroupDetail
 	var params GroupShowParam
 
 	if err := c.ShouldBindUri(&params); err != nil {
@@ -44,29 +71,35 @@ func GroupShow(c *gin.Context, db *gorm.DB) {
 			"error": err.Error(),
 		})
 	}
+	fmt.Println(params.ID)
 
 	db.Preload(clause.Associations).Where("id = ? ", params.ID).Find(&group)
-	db.Preload(clause.Associations).Where("group_id = ?", group.ID).Find(&user_groups)
+	db.Preload(clause.Associations).Where("group_id = ?", group.ID).Find(&userGroups)
+	db.Preload(clause.Associations).Find(&group.Transactions)
 
-	for _, user_group := range user_groups {
-		fmt.Println(user_group.AmountOwe)
-		fmt.Println(user_group.AmountPaid)
-		group_details = append(group_details, GroupDetail{
-			UserName: user_group.User.UserName,
-			Email:    user_group.User.Email,
-			UserId:   user_group.UserId,
-			Pay:      user_group.AmountOwe - user_group.AmountPaid,
-			Receive:  user_group.AmountPaid - user_group.AmountOwe,
+	for _, userGroup := range userGroups {
+		groupDetails = append(groupDetails, GroupDetail{
+			UserName: userGroup.User.UserName,
+			Email:    userGroup.User.Email,
+			UserId:   int64(userGroup.UserId),
+			Pay:      userGroup.AmountOwe - userGroup.AmountPaid,
+			Receive:  userGroup.AmountPaid - userGroup.AmountOwe,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"name":  group.Name,
-		"users": group_details,
+		"data": gin.H{
+			"name":        group.Name,
+			"description": group.Description,
+			"members":     groupDetails,
+			"expenses":    group.Transactions,
+		},
 	})
 }
 
 type CreateGroupParams struct {
-	Name string `json:"name"`
+	Name        string `json:"name"`
+	Currency    string `json:"currency"`
+	Description string `json:"description"`
 }
 
 func GroupCreate(c *gin.Context, db *gorm.DB) {
@@ -77,10 +110,12 @@ func GroupCreate(c *gin.Context, db *gorm.DB) {
 			"error": err.Error(),
 		})
 	}
-
-	group := model.Group{Name: params.Name}
+	userId, _ := c.Get("current_user")
+	group := model.Group{Name: params.Name, CreatedById: userId.(float64), Currency: params.Currency}
 
 	db.Create(&group)
+	userGroup := model.UserGroup{GroupId: float64(group.ID), UserId: userId.(float64)}
+	db.Create(&userGroup)
 
 	c.JSON(http.StatusOK, gin.H{
 		"data":    group,
