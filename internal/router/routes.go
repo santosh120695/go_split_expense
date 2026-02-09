@@ -28,19 +28,18 @@ var Routes = []Route{
 	{RequestType: "GET", Handler: handler.TransactionIndex, RequestGroup: "transactions", Path: "", Authenticate: true},
 	{RequestType: "POST", Handler: handler.TransactionCreate, RequestGroup: "transactions", Path: "", Authenticate: true},
 	{RequestType: "GET", Handler: handler.CalculateSplit, RequestGroup: "transactions", Path: "/:group_id", Authenticate: true},
+	{RequestType: "GET", Handler: handler.DashboardIndex, RequestGroup: "dashboard", Path: "", Authenticate: true},
 }
 
-func InitRoutes(db *gorm.DB) *gin.Engine {
-	r := gin.Default()
+func InitRoutes(db *gorm.DB, r *gin.Engine) {
 	v1 := r.Group("/v1")
 	for _, route := range Routes {
 		group := v1.Group(route.RequestGroup)
 		if route.Authenticate {
-			group.Use(middleware.AuthMiddleWare())
+			group.Use(middleware.AuthMiddleWare(db))
 		}
 		group.Handle(route.RequestType, route.Path, func(c *gin.Context) {
 			route.Handler(c, db)
 		})
 	}
-	return r
 }

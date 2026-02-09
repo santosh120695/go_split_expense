@@ -6,8 +6,8 @@ import (
 
 type UserGroup struct {
 	gorm.Model
-	UserId     int64
-	GroupId    int64
+	UserId     float64
+	GroupId    float64
 	AmountOwe  float64
 	AmountPaid float64
 	User       User

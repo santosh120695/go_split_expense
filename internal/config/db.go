@@ -14,12 +14,15 @@ func ConnectDB() *gorm.DB {
 	if err != nil {
 		fmt.Printf("error in connecting with db, %v\n", err.Error())
 	} else {
-		db.AutoMigrate(&model.User{},
+		err := db.AutoMigrate(&model.User{},
 			&model.Group{},
 			&model.UserGroup{},
 			&model.Transaction{},
 			&model.UserTransaction{},
 		)
+		if err != nil {
+			return nil
+		}
 	}
 	return db
 }

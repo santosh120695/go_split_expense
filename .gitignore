@@ -7,3 +7,8 @@
 
 # OS-specific files
 .DS_Store
+/web-app/node_modules
+/web-app/dist
+/web-app/dist-ssr
+/web-app/.idea
+.idea

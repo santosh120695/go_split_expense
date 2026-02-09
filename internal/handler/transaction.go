@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"splitwise/internal/model"
 
@@ -33,16 +34,16 @@ func TransactionIndex(c *gin.Context, db *gorm.DB) {
 }
 
 type CreateTransactionParams struct {
-	GroupID  int64   `json:"group_id"`
-	PaidById int64   `json:"paid_by_id"`
-	Amount   float64 `json:"amount"`
-	Title    string  `json:"title"`
-	UserIds  []int64 `json:"user_ids"`
+	GroupID int64     `json:"group_id"`
+	Amount  float64   `json:"amount"`
+	Title   string    `json:"title"`
+	UserIds []float64 `json:"user_ids"`
 }
 
 type AmountUser struct {
-	UserId int64   `gorm:"column:user_id"`
-	Amount float64 `gorm:"column:amount"`
+	UserId   float64 `gorm:"column:user_id"`
+	Amount   float64 `gorm:"column:amount"`
+	Username string  `gorm:"column:user_name"`
 }
 type splitParams struct {
 	GroupId int64 `uri:"group_id"`
@@ -51,14 +52,16 @@ type splitParams struct {
 type RepayTransaction struct {
 	FromId int64
 	ToId   int64
+	From   string
+	To     string
 	Amount float64
 }
 
-func getMinAmout(user_amount1, user_amount2 float64) float64 {
-	if user_amount1 > user_amount2 {
-		return user_amount2
+func getMinAmount(userAmount1, userAmount2 float64) float64 {
+	if userAmount1 > userAmount2 {
+		return userAmount2
 	}
-	return user_amount1
+	return userAmount1
 }
 
 func CalculateSplit(c *gin.Context, db *gorm.DB) {
@@ -75,10 +78,9 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 	}
 
 	db.Where("id = ?", params.GroupId).First(&group)
-
-	db.Raw(`Select user_id, SUM(net_balance) as amount
+	db.Raw(`Select users.user_name, user_id, SUM(net_balance) as amount
 			FROM user_transactions
-			JOIN transactions ON transactions.id = user_transactions.transaction_id
+			JOIN transactions ON transactions.id = user_transactions.transaction_id JOIN users ON user_transactions.user_id = users.id
 			WHERE transactions.group_id = ?
 			GROUP BY user_id ORDER BY amount DESC`, group.ID).Scan(&usersAmount)
 
@@ -89,35 +91,44 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 	}
 
 	usersWhoOwe = usersAmount[index:]
+	fmt.Println("userAmount", usersAmount)
+	fmt.Println("usersWhoOwe ", usersWhoOwe)
+	fmt.Println("usersWhoPaid ", usersWhoPaid)
 	i := 0
 	j := 0
-	repay_transactions := []RepayTransaction{}
+	var repayTransactions []RepayTransaction
 	for len(usersWhoPaid) > i && len(usersWhoOwe) > j {
-		min_amount := getMinAmout(usersWhoPaid[i].Amount, -usersWhoOwe[j].Amount)
-		usersWhoPaid[i].Amount = usersWhoPaid[i].Amount - min_amount
-		usersWhoOwe[i].Amount = usersWhoOwe[i].Amount - min_amount
-		repay_transactions = append(repay_transactions, RepayTransaction{
-			FromId: usersWhoOwe[j].UserId,
-			ToId:   usersWhoPaid[i].UserId,
-			Amount: min_amount,
-		})
-		if usersWhoPaid[i].Amount == 0 {
-			i += 1
-		}
-		if usersWhoOwe[j].Amount == 0 {
-			j += 1
+		minAmount := getMinAmount(usersWhoPaid[i].Amount, -usersWhoOwe[j].Amount)
+		fmt.Println("minAmount", minAmount)
+		if minAmount > 0 {
+			usersWhoPaid[i].Amount = usersWhoPaid[i].Amount - minAmount
+			usersWhoOwe[i].Amount = (-usersWhoOwe[i].Amount) - minAmount
+			repayTransactions = append(repayTransactions, RepayTransaction{
+				From:   usersWhoOwe[j].Username,
+				To:     usersWhoPaid[i].Username,
+				Amount: minAmount,
+			})
+			fmt.Println("repayTransactions", repayTransactions)
+			if usersWhoPaid[i].Amount == 0 {
+				i += 1
+			}
+			if usersWhoOwe[j].Amount == 0 {
+				j += 1
+			}
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user_amounts": usersAmount,
-		"repay":        repay_transactions,
+		"data": gin.H{
+			"user_amounts": usersAmount,
+			"repay":        repayTransactions,
+		},
 	})
 }
 
 func TransactionCreate(c *gin.Context, db *gorm.DB) {
 	var params CreateTransactionParams
-
+	currentUserId, _ := c.Get("current_user")
 	if err := c.ShouldBindJSON(&params); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -125,20 +136,21 @@ func TransactionCreate(c *gin.Context, db *gorm.DB) {
 	}
 
 	var users []model.User
+	fmt.Println("user_ids", currentUserId.(float64))
+	fmt.Println("groups", params)
 	db.Find(&users, params.UserIds)
 	transaction := model.Transaction{
 		Amount:   params.Amount,
 		GroupId:  params.GroupID,
-		PaidById: params.PaidById,
 		Title:    params.Title,
+		PaidById: currentUserId.(float64),
 	}
 
 	db.Save(&transaction)
 	share := transaction.Amount / float64(len(params.UserIds))
-	var user_transactions []model.UserTransaction
+	var userTransactions []model.UserTransaction
 	for _, userId := range params.UserIds {
-
-		user_transactions = append(user_transactions,
+		userTransactions = append(userTransactions,
 			model.UserTransaction{
 				UserId:        userId,
 				TransactionId: int64(transaction.ID),
@@ -152,8 +164,9 @@ func TransactionCreate(c *gin.Context, db *gorm.DB) {
 			},
 		)
 	}
-	db.Save(&user_transactions)
+	db.Save(&userTransactions)
 	c.JSON(http.StatusOK, gin.H{
-		"data": transaction,
+		"success": true,
+		"data":    transaction,
 	})
 }

@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+:root {
+    --background: #F5F7F8;
+    --foreground: #000000;
+    --primary: #05668D;
+    --card: #fff;
+    --card-foreground: #000;
+    --card-border: #C5C3C3;
+    --danger: #F44336;
+}
+
+@layer components {
+    .card-border {
+        @apply border-[#C5C3C3];
+    }
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    font-family: 'Poppins', sans-serif;
+}
+
+* {
+    font-family: 'Poppins', sans-serif;
+}
