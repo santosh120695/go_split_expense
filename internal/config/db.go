@@ -31,7 +31,7 @@ func ConnectDB() *gorm.DB {
 func openDB() (*gorm.DB, error) {
 	env := os.Getenv("ENV")
 
-	dbPath := os.Getenv("DB_NAME")
+	dbPath := os.Getenv("DATABASE_URL")
 	if env == "production" {
 		return gorm.Open(postgres.Open(dbPath), &gorm.Config{})
 	}
