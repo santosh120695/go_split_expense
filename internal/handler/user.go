@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -22,18 +22,21 @@ func UserSearch(c *gin.Context, db *gorm.DB) {
 	searchParams := userSearchParams{}
 
 	if err := c.ShouldBindQuery(&searchParams); err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 	var users []UserSearchResponse
-	fmt.Println(searchParams.SearchTerm)
-	db.Raw("SELECT user_name, id, email FROM users WHERE user_name LIKE ?", "%"+searchParams.SearchTerm+"%").Scan(&users)
-	fmt.Println(users)
-	//db.Model(&model.User{}).Select("email", "user_name", "id").Where("user_name LIKE ?", "%"+searchParams.SearchTerm+"%").Scan(&users)
+	term := strings.TrimSpace(searchParams.SearchTerm)
 
+	if len(term) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "search term must be at least two characters"})
+		return
+	}
+	
+	limit := 10
+	db.WithContext(c.Request.Context()).Raw("SELECT user_name, id, email FROM users WHERE user_name LIKE ? LIMIT ?", "%"+term+"%", limit).Scan(&users)
 	c.JSON(http.StatusOK, gin.H{
 		"data":  users,
 		"count": len(users),

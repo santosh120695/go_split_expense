@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"splitwise/internal/model"
 
 	"github.com/gin-gonic/gin"
@@ -11,30 +12,46 @@ import (
 
 type TransactionIndexParams struct {
 	GroupId int64 `form:"group_id"`
+	UserId  int64 `form:"user_id"`
 }
 
 func TransactionIndex(c *gin.Context, db *gorm.DB) {
 	var params TransactionIndexParams
 	if err := c.ShouldBindQuery(&params); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   err.Error(),
+			"success": false,
 		})
+		return
+	}
+
+	if params.GroupId == 0 && params.UserId == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "GroupId or UserId is required",
+			"success": false,
+		})
+		return
 	}
 
 	var transactions []model.Transaction
 
-	query := db
+	query := db.WithContext(c.Request.Context())
 	if params.GroupId != 0 {
-		query = query.Where("group_id = ?", params.GroupId).Find(&transactions)
+		query = query.Where("group_id = ?", params.GroupId)
 	}
+	if params.UserId != 0 {
+		query = query.Where("user_id = ?", params.UserId)
+	}
+	query.Order("created_at desc").Find(&transactions)
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": transactions,
+		"data":    transactions,
+		"success": true,
 	})
 }
 
 type CreateTransactionParams struct {
-	GroupID int64     `json:"group_id"`
+	GroupID float64   `json:"group_id"`
 	Amount  float64   `json:"amount"`
 	Title   string    `json:"title"`
 	UserIds []float64 `json:"user_ids"`
@@ -77,8 +94,9 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 		})
 	}
 
-	db.Where("id = ?", params.GroupId).First(&group)
-	db.Raw(`Select users.user_name, user_id, SUM(net_balance) as amount
+	db.WithContext(c.Request.Context()).Where("id = ?", params.GroupId).First(&group)
+
+	db.WithContext(c.Request.Context()).Raw(`Select users.user_name, user_id, SUM(net_balance) as amount
 			FROM user_transactions
 			JOIN transactions ON transactions.id = user_transactions.transaction_id JOIN users ON user_transactions.user_id = users.id
 			WHERE transactions.group_id = ?
@@ -91,15 +109,16 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 	}
 
 	usersWhoOwe = usersAmount[index:]
+
+	i := 0
+	j := 0
+
 	fmt.Println("userAmount", usersAmount)
 	fmt.Println("usersWhoOwe ", usersWhoOwe)
 	fmt.Println("usersWhoPaid ", usersWhoPaid)
-	i := 0
-	j := 0
 	var repayTransactions []RepayTransaction
 	for len(usersWhoPaid) > i && len(usersWhoOwe) > j {
 		minAmount := getMinAmount(usersWhoPaid[i].Amount, -usersWhoOwe[j].Amount)
-		fmt.Println("minAmount", minAmount)
 		if minAmount > 0 {
 			usersWhoPaid[i].Amount = usersWhoPaid[i].Amount - minAmount
 			usersWhoOwe[i].Amount = (-usersWhoOwe[i].Amount) - minAmount
@@ -108,7 +127,6 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 				To:     usersWhoPaid[i].Username,
 				Amount: minAmount,
 			})
-			fmt.Println("repayTransactions", repayTransactions)
 			if usersWhoPaid[i].Amount == 0 {
 				i += 1
 			}
@@ -130,43 +148,78 @@ func TransactionCreate(c *gin.Context, db *gorm.DB) {
 	var params CreateTransactionParams
 	currentUserId, _ := c.Get("current_user")
 	if err := c.ShouldBindJSON(&params); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
+		return
 	}
 
 	var users []model.User
-	fmt.Println("user_ids", currentUserId.(float64))
-	fmt.Println("groups", params)
-	db.Find(&users, params.UserIds)
-	transaction := model.Transaction{
-		Amount:   params.Amount,
-		GroupId:  params.GroupID,
-		Title:    params.Title,
-		PaidById: currentUserId.(float64),
+
+	db.WithContext(c.Request.Context()).Find(&users, params.UserIds)
+	var transaction model.Transaction
+	var userTransactions []model.UserTransaction
+	err := db.WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error {
+
+		transaction = model.Transaction{
+			Amount:   params.Amount,
+			GroupId:  params.GroupID,
+			Title:    params.Title,
+			PaidById: currentUserId.(float64),
+		}
+
+		err := db.WithContext(c.Request.Context()).Create(&transaction)
+		if err.Error != nil {
+			return err.Error
+		}
+
+		share := transaction.Amount / float64(len(params.UserIds))
+
+		userTransactions = append(userTransactions, model.UserTransaction{
+			UserId:        transaction.PaidById,
+			Share:         share,
+			TransactionId: int64(transaction.ID),
+			NetBalance: func() float64 {
+				if slices.Contains(params.UserIds, transaction.PaidById) {
+					return transaction.Amount - share
+				}
+				return transaction.Amount
+			}(),
+		})
+
+		fmt.Println("userTransactions", userTransactions)
+
+		for _, userId := range params.UserIds {
+			if userId != transaction.PaidById {
+				userTransactions = append(userTransactions,
+					model.UserTransaction{
+						UserId:        userId,
+						TransactionId: int64(transaction.ID),
+						Share:         share,
+						NetBalance:    -share,
+					})
+			}
+		}
+		err = db.WithContext(c.Request.Context()).Create(&userTransactions)
+		if err.Error != nil {
+			return err.Error
+		}
+		return nil
+
+	})
+
+	fmt.Println(err)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  err.Error(),
+			"status": false,
+		})
+		return
 	}
 
-	db.Save(&transaction)
-	share := transaction.Amount / float64(len(params.UserIds))
-	var userTransactions []model.UserTransaction
-	for _, userId := range params.UserIds {
-		userTransactions = append(userTransactions,
-			model.UserTransaction{
-				UserId:        userId,
-				TransactionId: int64(transaction.ID),
-				Share:         share,
-				NetBalance: func() float64 {
-					if transaction.PaidById == userId {
-						return transaction.Amount - share
-					}
-					return -share
-				}(),
-			},
-		)
-	}
-	db.Save(&userTransactions)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    transaction,
+		"data":    userTransactions,
 	})
 }

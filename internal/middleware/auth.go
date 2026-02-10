@@ -16,6 +16,7 @@ func AuthMiddleWare() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "missing authorization token",
 			})
+			return
 		}
 		token, err := verifyToken(tokenString)
 		if err != nil {

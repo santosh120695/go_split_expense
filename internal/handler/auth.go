@@ -1,14 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
-	"os"
 	"splitwise/internal/model"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -20,34 +17,10 @@ type SignUpParams struct {
 	Email           string `json:"email"`
 }
 
-func hashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
-}
-
-func verifyPassword(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
-
-func createToken(user model.User) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email": user.Email,
-		"id":    user.ID,
-		"exp":   time.Now().Add(time.Hour * 24).Unix(),
-	})
-	var secretKey = []byte(os.Getenv("SECRET_KEY"))
-	tokenString, err := token.SignedString(secretKey)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
-}
-
 func SignUp(c *gin.Context, db *gorm.DB) {
 	signupParam := SignUpParams{}
 	if err := c.ShouldBindJSON(&signupParam); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -59,16 +32,9 @@ func SignUp(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	encryptedPassword, err := hashPassword(signupParam.Password)
+	user := model.User{UserName: signupParam.UserName, Email: signupParam.Email, Password: signupParam.Password, ContactNo: signupParam.ContactNo}
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	user := model.User{UserName: signupParam.UserName, Email: signupParam.Email, EncryptedPassword: encryptedPassword, ContactNo: signupParam.ContactNo}
-
-	result := db.Create(&user)
+	result := db.WithContext(c.Request.Context()).Create(&user)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error})
 		return
@@ -93,8 +59,15 @@ func SignIn(c *gin.Context, db *gorm.DB) {
 	}
 
 	var user model.User
-	db.Where("email = ?", signingParams.Email).First(&user)
+	//db.Where("email = ?", signingParams.Email).First(&user)
+	result := db.WithContext(c.Request.Context()).First(&user, "email = ?", signingParams.Email)
 
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"status": false, "error": "Invalid email or password"})
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"status": false, "error": result.Error.Error()})
+	}
 	if user.Email == "" {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
@@ -102,8 +75,9 @@ func SignIn(c *gin.Context, db *gorm.DB) {
 		})
 		return
 	}
-	if verifyPassword(signingParams.Password, user.EncryptedPassword) {
-		token, err := createToken(user)
+
+	if user.VerifyPassword(signingParams.Password) {
+		token, err := user.CreateToken()
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -119,6 +93,7 @@ func SignIn(c *gin.Context, db *gorm.DB) {
 		})
 		return
 	}
+
 	c.JSON(http.StatusUnauthorized, gin.H{
 		"success": false,
 		"message": "Invalid email or password!",

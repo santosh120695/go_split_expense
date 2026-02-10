@@ -28,7 +28,7 @@ var Routes = []Route{
 	{RequestType: "GET", Handler: handler.TransactionIndex, RequestGroup: "transactions", Path: "", Authenticate: true},
 	{RequestType: "POST", Handler: handler.TransactionCreate, RequestGroup: "transactions", Path: "", Authenticate: true},
 	{RequestType: "GET", Handler: handler.CalculateSplit, RequestGroup: "transactions", Path: "/:group_id", Authenticate: true},
-	//{RequestType: "GET", Handler: handler.DashboardIndex, RequestGroup: "dashboard", Path: "", Authenticate: true},
+	{RequestType: "GET", Handler: handler.DashboardIndex, RequestGroup: "dashboard", Path: "", Authenticate: true},
 }
 
 func InitRoutes(db *gorm.DB, r *gin.Engine) {
