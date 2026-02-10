@@ -19,8 +19,8 @@ export const updateGroup = (group: GroupType) => new Promise<GroupType>((resolve
     api.patch(`/groups/${group.id}`, group).then((res) => resolve(res.data.data)).catch((err) => reject(err))
 )
 
-export const expenseSplits = (groupId: number) => new Promise<{repay: {From: string, To: string, Amount: number}[]}>((resolve, reject) =>
-    api.get(`/transactions/${groupId}`).then((res) => resolve(res.data.data)).catch((err) => reject(err))
+export const expenseRepays = (groupId: number) => new Promise<{From: string, To: string, Amount: number}[]>((resolve, reject) =>
+    api.get(`/groups/${groupId}/repays`).then((res) => resolve(res.data.data)).catch((err) => reject(err))
 )
 
 export const addUserToGroup = (groupId: number, userIds: number[]) => new Promise((resolve, reject) => {

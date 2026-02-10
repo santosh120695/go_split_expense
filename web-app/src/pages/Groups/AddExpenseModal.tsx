@@ -35,8 +35,6 @@ function AddExpenseModal({
       },
   });
 
-  console.log(expenseFormData);
-
   const {data: group} = useQuery<GroupType>({
     queryKey: ['group_details', groupId],
     queryFn: () => fetchGroup(Number(groupId)),
@@ -93,7 +91,6 @@ function AddExpenseModal({
         e.preventDefault();
         addExpenseMutation(expenseFormData);
     };
-
 
   return (
     <>

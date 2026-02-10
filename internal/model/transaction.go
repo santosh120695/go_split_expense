@@ -1,7 +1,7 @@
 package model
 
 import (
-	"context"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
@@ -18,13 +18,22 @@ type Transaction struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (transaction *Transaction) BeforeCreate(db *gorm.DB) {
+func (transaction *Transaction) BeforeCreate(db *gorm.DB) (err error) {
 	var group Group
-	ctx := db.Statement.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	db.WithContext(ctx).First(&group, "id = ?", transaction.GroupId)
+	db.First(&group, "id = ?", transaction.GroupId)
 	group.TotalAmount += transaction.Amount
-	db.WithContext(ctx).Save(&group)
+	err = db.Save(&group).Error
+	return err
+}
+
+func (transaction *Transaction) AfterCreate(db *gorm.DB) (err error) {
+	db.Preload("Users").Find(&transaction.Users)
+	activity := Activity{
+		Description: transaction.PaidBy.UserName + " Paid " + strconv.FormatFloat(transaction.Amount, 'f', 2, 64) + " for " + transaction.Title,
+		UserId:      transaction.PaidById,
+		GroupId:     transaction.GroupId,
+	}
+
+	err = db.Create(&activity).Error
+	return err
 }

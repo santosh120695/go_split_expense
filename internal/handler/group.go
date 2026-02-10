@@ -63,8 +63,8 @@ type GroupShowParam struct {
 
 func GroupShow(c *gin.Context, db *gorm.DB) {
 	var group model.Group
-	var userGroups []model.UserGroup
-	var groupDetails []GroupDetail
+	//var userGroups []model.UserGroup
+	//var groupDetails []GroupDetail
 	var params GroupShowParam
 
 	if err := c.ShouldBindUri(&params); err != nil {
@@ -74,24 +74,25 @@ func GroupShow(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	db.WithContext(c.Request.Context()).Preload(clause.Associations).Where("id = ? ", params.ID).Find(&group)
-	db.WithContext(c.Request.Context()).Preload(clause.Associations).Where("group_id = ?", group.ID).Find(&userGroups)
+	//db.WithContext(c.Request.Context()).Preload(clause.Associations).Where("group_id = ?", group.ID).Find(&userGroups)
 	db.WithContext(c.Request.Context()).Preload(clause.Associations).Find(&group.Transactions)
-
-	for _, userGroup := range userGroups {
-		groupDetails = append(groupDetails, GroupDetail{
-			UserName: userGroup.User.UserName,
-			Email:    userGroup.User.Email,
-			UserId:   int64(userGroup.UserId),
-			Pay:      userGroup.AmountOwe - userGroup.AmountPaid,
-			Receive:  userGroup.AmountPaid - userGroup.AmountOwe,
-		})
-	}
+	//
+	//for _, userGroup := range userGroups {
+	//	groupDetails = append(groupDetails, GroupDetail{
+	//		UserName: userGroup.User.UserName,
+	//		Email:    userGroup.User.Email,
+	//		UserId:   int64(userGroup.UserId),
+	//		Pay:      userGroup.AmountOwe - userGroup.AmountPaid,
+	//		Receive:  userGroup.AmountPaid - userGroup.AmountOwe,
+	//	})
+	//}
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"name":        group.Name,
 			"description": group.Description,
-			"members":     groupDetails,
+			"members":     group.Users,
 			"expenses":    group.Transactions,
+			"activities":  group.Activities,
 		},
 	})
 }
@@ -199,5 +200,31 @@ func AddUser(c *gin.Context, db *gorm.DB) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": true,
+	})
+}
+
+type GroupRepayParams struct {
+	GroupId []float64 `uri:"id"`
+}
+
+func GroupRepays(c *gin.Context, db *gorm.DB) {
+	var params GroupRepayParams
+	if err := c.ShouldBindUri(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   err.Error(),
+			"success": false,
+		})
+		return
+	}
+
+	var group model.Group
+
+	db.WithContext(c.Request.Context()).First(&group, "id = ?", params.GroupId)
+
+	repays := group.CalculateRepayments(db)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": true,
+		"data":   repays,
 	})
 }

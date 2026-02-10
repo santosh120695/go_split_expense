@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 	"splitwise/internal/model"
@@ -113,9 +112,6 @@ func CalculateSplit(c *gin.Context, db *gorm.DB) {
 	i := 0
 	j := 0
 
-	fmt.Println("userAmount", usersAmount)
-	fmt.Println("usersWhoOwe ", usersWhoOwe)
-	fmt.Println("usersWhoPaid ", usersWhoPaid)
 	var repayTransactions []RepayTransaction
 	for len(usersWhoPaid) > i && len(usersWhoOwe) > j {
 		minAmount := getMinAmount(usersWhoPaid[i].Amount, -usersWhoOwe[j].Amount)
@@ -187,8 +183,6 @@ func TransactionCreate(c *gin.Context, db *gorm.DB) {
 			}(),
 		})
 
-		fmt.Println("userTransactions", userTransactions)
-
 		for _, userId := range params.UserIds {
 			if userId != transaction.PaidById {
 				userTransactions = append(userTransactions,
@@ -207,8 +201,6 @@ func TransactionCreate(c *gin.Context, db *gorm.DB) {
 		return nil
 
 	})
-
-	fmt.Println(err)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -21,6 +21,7 @@ func ConnectDB() *gorm.DB {
 			&model.UserGroup{},
 			&model.Transaction{},
 			&model.UserTransaction{},
+			&model.Activity{},
 		)
 		if err != nil {
 			return nil

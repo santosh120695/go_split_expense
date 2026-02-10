@@ -3,6 +3,7 @@ import {useQuery} from "@tanstack/react-query";
 import {fetchDashboardCount} from "../api/dashboard.ts";
 
 function Home() {
+
   const { data: dashboardCounts } = useQuery<{you_owe: {currency: string, amount: number}, you_are_owed: {currency: string, amount: number}, activities: string[]}>({
         queryKey: ['dashboard_counts'],
         queryFn: fetchDashboardCount

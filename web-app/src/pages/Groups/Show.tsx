@@ -1,7 +1,7 @@
 import { TrendingUp, Wallet, UserPlus, PlusCircle } from "lucide-react";
 import {useParams} from "react-router-dom";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
-import {expenseSplits, fetchGroup, addUserToGroup} from "../../api/group.ts";
+import {expenseRepays, fetchGroup, addUserToGroup} from "../../api/group.ts";
 import moment from "moment";
 import {useState} from "react";
 import AddUserToGroupModal from "./AddUserToGroupModal.tsx";
@@ -21,31 +21,31 @@ function GroupDetails() {
     enabled: !!id,
   })
 
-  const {data: expenseSplit, isLoading: expenseLoading} = useQuery<{repay: {From: string, To: string, Amount: number}[]}> ({
+  const {data: expenseSplit, isLoading: expenseLoading} = useQuery< {From: string, To: string, Amount: number}[]> ({
     queryKey: ['expenseSplits', id],
-    queryFn: () => expenseSplits(Number(id)),
+    queryFn: () => expenseRepays(Number(id)),
     enabled: !!id,
   })
 
-    const {mutate: addUserToGroupMutation} = useMutation({
-        mutationFn: async () => {
-            if (!selectedUserIds || selectedUserIds.length === 0) {
-                toast.error("Please select at least one user to add");
-                return;
-            }
-            const groupId = Number(id);
-            await addUserToGroup(groupId, selectedUserIds)
-        },
-        onSuccess: () => {
-            toast.success("Users added to group successfully");
-            queryClient.invalidateQueries({queryKey: ['group_details', id]});
-            setIsAddUserModalOpen(false);
-            setSelectedUserIds([]);
-        },
-        onError: (error) => {
-            toast.error(`Failed to add users to group: ${error.message}`);
+  const {mutate: addUserToGroupMutation} = useMutation({
+    mutationFn: async () => {
+        if (!selectedUserIds || selectedUserIds.length === 0) {
+            toast.error("Please select at least one user to add");
+            return;
         }
-    });
+        const groupId = Number(id);
+        await addUserToGroup(groupId, selectedUserIds)
+    },
+    onSuccess: () => {
+        toast.success("Users added to group successfully");
+        queryClient.invalidateQueries({queryKey: ['group_details', id]});
+        setIsAddUserModalOpen(false);
+        setSelectedUserIds([]);
+    },
+    onError: (error) => {
+        toast.error(`Failed to add users to group: ${error.message}`);
+    }
+  });
 
   if (isLoading) {
     return <h2>
@@ -75,7 +75,7 @@ function GroupDetails() {
   return (
       <>
       <div className="mt-12">
-        <div className="bg-card rounded-lg border border-[#C5C3C3] p-8 m-4">
+        <div className="bg-(--card) rounded-lg border border-[#C5C3C3] p-8 m-5">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-3xl font-bold text-foreground">{group.name}</h2>
@@ -129,8 +129,8 @@ function GroupDetails() {
             {!expenseLoading &&
             <div className="space-y-3">
               <div className="border border-[#C5C3C3] rounded-lg p-4 hover:bg-background transition-colors duration-200">
-                {(expenseSplit?.repay || []).map((repay_transaction: {From: string, To: string, Amount: number}) => (
-                    <div className="flex items-center justify-between">
+                {(expenseSplit || []).map((repay_transaction: {From: string, To: string, Amount: number}) => (
+                    <div className="flex items-center justify-between mb-2 border-b-2 border-gray-200 ">
                       <div>
                         <p className="text-foreground font-medium">{repay_transaction.From}</p>
                         <p className="text-sm text-muted-foreground">owes</p>
@@ -143,7 +143,6 @@ function GroupDetails() {
                       </div>
                     </div>
                 ))}
-
               </div>
             </div>
             }
