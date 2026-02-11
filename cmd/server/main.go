@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"splitwise/internal/config"
@@ -13,8 +12,6 @@ import (
 )
 
 func main() {
-	fmt.Println("welcome to splitwise app")
-
 	if os.Getenv("ENV") != "production" {
 		err := godotenv.Load()
 		if err != nil {
@@ -24,6 +21,7 @@ func main() {
 	}
 
 	db := config.ConnectDB()
+	gin.SetMode(gin.ReleaseMode)
 	engine := gin.Default()
 	engine.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
