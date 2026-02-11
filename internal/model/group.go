@@ -48,6 +48,9 @@ func (group Group) CalculateRepayments(db *gorm.DB) []RepayTransaction {
 			WHERE transactions.group_id = ?
 			GROUP BY user_id ORDER BY amount DESC`, group.ID).Scan(&usersAmount)
 
+	if len(usersAmount) == 0 {
+		return make([]RepayTransaction, 0)
+	}
 	index := 0
 	for usersAmount[index].Amount > 0 {
 		usersWhoPaid = append(usersWhoPaid, usersAmount[index])

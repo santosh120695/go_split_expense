@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,7 +16,7 @@ type userSearchParams struct {
 type UserSearchResponse struct {
 	UserName string `json:"user_name"`
 	Email    string `json:"email"`
-	ID       string `json:"id"`
+	ID       float64
 }
 
 func UserSearch(c *gin.Context, db *gorm.DB) {
@@ -34,9 +35,11 @@ func UserSearch(c *gin.Context, db *gorm.DB) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "search term must be at least two characters"})
 		return
 	}
-	
+
 	limit := 10
 	db.WithContext(c.Request.Context()).Raw("SELECT user_name, id, email FROM users WHERE user_name LIKE ? LIMIT ?", "%"+term+"%", limit).Scan(&users)
+	fmt.Println(searchParams.SearchTerm)
+	fmt.Println("users found", users)
 	c.JSON(http.StatusOK, gin.H{
 		"data":  users,
 		"count": len(users),

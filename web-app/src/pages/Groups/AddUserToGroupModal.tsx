@@ -8,7 +8,7 @@ interface AddUserToGroupModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSelectUser: (userIds: number[]) => void;
-    onSubmit: (e: React.FormEvent) => void;
+    onSubmit: (e: React.SubmitEvent) => void;
 }
 
 function AddUserToGroupModal({
@@ -19,15 +19,18 @@ function AddUserToGroupModal({
 }: AddUserToGroupModalProps) {
     if (!isOpen) return null;
 
-    const loadOptions = (inputValue: string, callback: (options: { value: number; label: string }[]) => void) => {
-        searchUsers(inputValue).then((users: UserType[]) => {
-            const options = users.map((user) => ({
-                value: user.ID as number,
-                label: user.user_name,
-            }));
-            callback(options);
-        });
-    };
+    const loadOptions = (inputValue: string) => new Promise<{value: number, label: string}[]>((resolve, reject) =>
+            searchUsers(inputValue).then((users: UserType[]) => {
+                const options: {value: number, label: string}[]  = users.map((user) => ({
+                    value: user.ID as number,
+                    label: user.user_name,
+                }));
+                resolve(options);
+            }).catch(() => {
+                reject([]);
+            })
+    )
+
 
     return (
         <>

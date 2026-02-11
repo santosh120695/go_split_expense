@@ -63,8 +63,6 @@ type GroupShowParam struct {
 
 func GroupShow(c *gin.Context, db *gorm.DB) {
 	var group model.Group
-	//var userGroups []model.UserGroup
-	//var groupDetails []GroupDetail
 	var params GroupShowParam
 
 	if err := c.ShouldBindUri(&params); err != nil {
@@ -74,18 +72,8 @@ func GroupShow(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	db.WithContext(c.Request.Context()).Preload(clause.Associations).Where("id = ? ", params.ID).Find(&group)
-	//db.WithContext(c.Request.Context()).Preload(clause.Associations).Where("group_id = ?", group.ID).Find(&userGroups)
-	db.WithContext(c.Request.Context()).Preload(clause.Associations).Find(&group.Transactions)
-	//
-	//for _, userGroup := range userGroups {
-	//	groupDetails = append(groupDetails, GroupDetail{
-	//		UserName: userGroup.User.UserName,
-	//		Email:    userGroup.User.Email,
-	//		UserId:   int64(userGroup.UserId),
-	//		Pay:      userGroup.AmountOwe - userGroup.AmountPaid,
-	//		Receive:  userGroup.AmountPaid - userGroup.AmountOwe,
-	//	})
-	//}
+	db.WithContext(c.Request.Context()).Preload(clause.Associations).Find(&group.Transactions, "group_id = ? ", group.ID)
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"name":        group.Name,
