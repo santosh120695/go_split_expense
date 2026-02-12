@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
 
       const token = response.data.token;
       if (token) {
-        setToken(token);
+        await setToken(token);
         navigate("/");
       } else {
         setError("Login failed: No token received.");

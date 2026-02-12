@@ -6,8 +6,20 @@ const api = axios.create({
   baseURL: `${HOST_URL}/v1/`,
   headers: {
     "Content-Type": "application/json",
-    "Authorization": `${localStorage.getItem("authToken")}`,
   },
 });
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      config.headers.Authorization = `${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;
