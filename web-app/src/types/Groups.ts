@@ -2,7 +2,7 @@ import type {UserType} from "./user.ts";
 import type {ExpenseType} from "./Expense.ts";
 
 export type GroupType = {
-    id: number | null;
+    ID: number | null;
     name: string;
     description: string;
     members: UserType[];
