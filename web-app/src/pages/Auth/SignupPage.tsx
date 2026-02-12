@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../../utils/api.ts"; // Import the Axios instance
+import api from "../../utils/api.ts";
+import { toast } from "react-toastify";
+import useAuthStore from "../../store/useStore.ts";
 
 interface SignupFormData {
   user_name: string;
@@ -13,9 +15,8 @@ interface SignupFormData {
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
+  const setToken = useAuthStore((state) => state.setToken);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const {
     register,
@@ -30,8 +31,6 @@ const SignupPage: React.FC = () => {
 
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     try {
       const response = await api.post("/users/sign_up", {
         user_name: data.user_name,
@@ -42,15 +41,21 @@ const SignupPage: React.FC = () => {
       });
 
       if (response.status === 201 || response.status === 200) {
-        setSuccess("Account created successfully! Please log in.");
-        setTimeout(() => {
-          navigate("/sign_in");
-        }, 2000);
+        toast.success("Account created successfully!");
+        const token = response.data.token;
+        console.log("token", token);
+        if (token) {
+            await setToken(token);
+            navigate("/");
+        } else {
+            toast.error("Signup successful, but no token received. Please log in.");
+            navigate("/sign_in");
+        }
       } else {
-        setError("Signup failed: Unexpected response from server.");
+        toast.error("Signup failed: Unexpected response from server.");
       }
     } catch (err: any) {
-      setError(
+      toast.error(
         err.response?.data?.message ||
           err.message ||
           "An unexpected error occurred.",
@@ -69,23 +74,6 @@ const SignupPage: React.FC = () => {
         <h2 className="text-3xl font-bold text-(--card-foreground) mb-8 text-center">
           Sign Up
         </h2>
-
-        {error && (
-          <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-            role="alert"
-          >
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
-        {success && (
-          <div
-            className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
-            role="alert"
-          >
-            <span className="block sm:inline">{success}</span>
-          </div>
-        )}
 
         <div className="mb-6">
           <label
@@ -155,6 +143,18 @@ const SignupPage: React.FC = () => {
             id="contact_no"
             {...register("contact_no", {
               required: "Contact number is required",
+              minLength: {
+                value: 7,
+                message: "Contact number must be at least 7 digits",
+              },
+              maxLength: {
+                value: 10,
+                message: "Contact number must not exceed 15 digits",
+              },
+              pattern: {
+                value: /^\+?[0-9]+$/,
+                message: "Please enter a valid contact number (digits only, optional leading '+')",
+              },
             })}
             className={`w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-(--primary) focus:border-transparent outline-none bg-transparent text-[var(--card-foreground)] transition ${
               errors.contact_no ? "border-red-500" : "border-(--card-foreground)"
@@ -181,8 +181,12 @@ const SignupPage: React.FC = () => {
             {...register("password", {
               required: "Password is required",
               minLength: {
-                value: 6,
-                message: "Password must be at least 6 characters",
+                value: 8,
+                message: "Password must be at least 8 characters",
+              },
+              pattern: {
+                value: /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$/,
+                message: "Password must contain at least one uppercase letter, one number, and one special character",
               },
             })}
             className={`w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-(--primary) focus:border-transparent outline-none bg-transparent text-[var(--card-foreground)] transition ${

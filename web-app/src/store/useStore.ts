@@ -23,13 +23,14 @@ const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   setToken: async (token) => {
     if (token) {
       localStorage.setItem("authToken", token);
+      set({ token, isAuthenticated: true });
       let fetchedUser: UserType | null = null;
       try {
         fetchedUser = await fetchCurrentUser();
       } catch (error) {
         console.error("Failed to fetch current user:", error);
       }
-      set({ token, isAuthenticated: !!token, user: fetchedUser });
+      set({ user: fetchedUser });
     } else {
       localStorage.removeItem("authToken");
       set({ token: null, isAuthenticated: false, user: null });

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"splitwise/internal/model"
 	"strings"
@@ -39,8 +38,6 @@ func UserSearch(c *gin.Context, db *gorm.DB) {
 
 	limit := 10
 	db.WithContext(c.Request.Context()).Raw("SELECT user_name, id, email FROM users WHERE user_name LIKE ? LIMIT ?", "%"+term+"%", limit).Scan(&users)
-	fmt.Println(searchParams.SearchTerm)
-	fmt.Println("users found", users)
 	c.JSON(http.StatusOK, gin.H{
 		"data":  users,
 		"count": len(users),
@@ -49,7 +46,6 @@ func UserSearch(c *gin.Context, db *gorm.DB) {
 
 func UserDetail(c *gin.Context, db *gorm.DB) {
 	userId, _ := c.Get("current_user")
-	fmt.Println("user_id", userId)
 	var user model.User
 	err := db.WithContext(c.Request.Context()).Where("id = ?", userId).First(&user).Error
 	if err != nil {

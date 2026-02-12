@@ -39,10 +39,15 @@ func SignUp(c *gin.Context, db *gorm.DB) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error})
 		return
 	}
-
+	token, err := user.CreateToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{
 		"email":     signupParam.Email,
 		"user_name": signupParam.UserName,
+		"token":     token,
 	})
 }
 

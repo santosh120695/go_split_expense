@@ -2,6 +2,8 @@ import React from "react";
 import Sidebar from "./Sidebar.tsx";
 import Navbar from "./Navbar.tsx";
 import { useSidebarStore } from "../store/useStore.ts";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 type LayoutProps = {
     children: React.ReactNode;
@@ -13,6 +15,7 @@ export default function Layout(props: LayoutProps) {
 
     return (
         <React.Fragment>
+            <ToastContainer />
             <div className="layout flex flex-row items-start">
                 <div className="md:w-64 h-screen flex-shrink-0 md:block">
                     <Sidebar />

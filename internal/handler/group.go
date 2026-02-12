@@ -22,13 +22,14 @@ type GroupIndexResponse struct {
 
 func GroupIndex(c *gin.Context, db *gorm.DB) {
 	userId, _ := c.Get("current_user")
-	var user model.User
 	var response []GroupIndexResponse
+	var groupIds []float64
+	var groups []model.Group
 
-	db.WithContext(c.Request.Context()).Preload(clause.Associations).First(&user, userId.(float64))
-	db.WithContext(c.Request.Context()).Preload(clause.Associations).Find(&user.Groups)
+	db.Debug().Model(model.UserGroup{}).Where("user_id = ?", userId).Select("group_id").Scan(&groupIds)
+	db.Debug().WithContext(c.Request.Context()).Preload(clause.Associations).Model(model.Group{}).Where("id IN ?", groupIds).Find(&groups)
 
-	for _, group := range user.Groups {
+	for _, group := range groups {
 		totalExpense := 0.0
 		for _, transaction := range group.Transactions {
 			totalExpense += transaction.Amount
