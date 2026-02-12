@@ -5,7 +5,7 @@ import AddExpenseModal from "./AddExpenseModal.tsx"
 import type {GroupType} from "../../types/Groups.ts";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {createGroup, fetchGroups} from "../../api/group.ts";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 
 function Index() {
@@ -15,6 +15,7 @@ function Index() {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
 
   const queryClient = useQueryClient()
+  const navigate = useNavigate();
 
   const {data: groups, isError, isLoading} = useQuery<GroupType[]>({
     queryKey: ['group_list'],
@@ -25,8 +26,13 @@ function Index() {
     mutationFn: (group: GroupType) => {
       return createGroup(group)
     },
-    onSuccess: async () => {
-      queryClient.invalidateQueries({queryKey: ['group_list']})
+    onSuccess: (data) => {
+      if (data && data.ID) {
+        navigate(`/groups/${data.ID}`);
+        queryClient.invalidateQueries({queryKey: ['group_list']});
+      } else {
+        console.error("No group ID found after creation.");
+      }
     }
   })
 
@@ -45,7 +51,7 @@ function Index() {
         total_expense: 0,
         icon: "Users",
         currency: "USD",
-        id: null,
+        ID: null,
         members: []
       }
       mutation.mutate({...newGroup})
@@ -87,7 +93,7 @@ function Index() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {(groups || []).map((group: GroupType) => (
               <div
-                key={group.id}
+                key={group.ID}
                 className="bg-(--card)  rounded-lg border border-[#C5C3C3] p-6 shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <div className="flex items-start justify-between mb-4">
@@ -116,14 +122,14 @@ function Index() {
 
                 <div className="flex gap-3 mt-4">
                   <button 
-                    onClick={() => { setSelectedGroupId(group.id);  setIsExpenseModalOpen(true) }}
+                    onClick={() => { setSelectedGroupId(group.ID);  setIsExpenseModalOpen(true) }}
                     className="flex-1 px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-opacity-90 transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
                   >
                     <Plus size={18} />
                     Add Expense
                   </button>
                   <Link
-                      to={`/groups/${group.id}`}
+                      to={`/groups/${group.ID}`}
                       className="flex-1 px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-opacity-80 transition-colors duration-200 font-medium text-sm text-center"
                   >
                     View Details

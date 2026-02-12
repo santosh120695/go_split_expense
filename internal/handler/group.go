@@ -17,7 +17,7 @@ type GroupIndexResponse struct {
 	Members      []model.User `json:"members"`
 	TotalExpense float64      `json:"total_expense"`
 	Currency     string       `json:"currency"`
-	ID           uint         `json:"id"`
+	ID           uint
 }
 
 func GroupIndex(c *gin.Context, db *gorm.DB) {
@@ -109,6 +109,7 @@ func GroupCreate(c *gin.Context, db *gorm.DB) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"data":    group,
 	})
 }
 

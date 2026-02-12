@@ -12,3 +12,9 @@ export const searchUsers = (query: string) => new Promise<UserType[]>((resolve, 
         err => reject(err)
     )
 );
+
+export const fetchCurrentUser = () => new Promise<UserType>((resolve, reject) =>
+    api.get(`users/me`).then((res) => resolve(res.data.data)).catch(
+        err => reject(err)
+    )
+);

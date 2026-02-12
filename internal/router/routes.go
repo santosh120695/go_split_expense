@@ -19,6 +19,7 @@ type Route struct {
 var Routes = []Route{
 	{RequestType: "POST", Handler: handler.SignUp, RequestGroup: "users", Path: "/sign_up", Authenticate: false},
 	{RequestType: "POST", Handler: handler.SignIn, RequestGroup: "users", Path: "/sign_in", Authenticate: false},
+	{RequestType: "GET", Handler: handler.UserDetail, RequestGroup: "users", Path: "/me", Authenticate: true},
 	{RequestType: "GET", Handler: handler.UserSearch, RequestGroup: "users", Path: "/search", Authenticate: true},
 	{RequestType: "GET", Handler: handler.GroupIndex, RequestGroup: "groups", Path: "", Authenticate: true},
 	{RequestType: "GET", Handler: handler.GroupShow, RequestGroup: "groups", Path: "/:id", Authenticate: true},

@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"splitwise/internal/model"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -43,5 +44,21 @@ func UserSearch(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusOK, gin.H{
 		"data":  users,
 		"count": len(users),
+	})
+}
+
+func UserDetail(c *gin.Context, db *gorm.DB) {
+	userId, _ := c.Get("current_user")
+	fmt.Println("user_id", userId)
+	var user model.User
+	err := db.WithContext(c.Request.Context()).Where("id = ?", userId).First(&user).Error
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"data": user,
 	})
 }
